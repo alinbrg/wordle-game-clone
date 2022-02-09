@@ -15293,7 +15293,12 @@ const dictionary = [
 
 const WORD_LENGTH = 5;
 
+const FLIP_ANIMATION_DURATION = 500;
+const DANCE_ANIMATION_DURATION = 500;
+
 const guessGrid = document.querySelector("[data-guess-grid]");
+
+const keyboard = document.querySelector("[data-keyboard]");
 
 const alertContainer = document.querySelector(".alert-container");
 
@@ -15375,7 +15380,59 @@ function submitGuess() {
 		return;
 	}
 
-	// 44
+	const guess = activeTiles.reduce((word, tile) => {
+		return word + tile.dataset.letter;
+	}, "");
+
+	if (!dictionary.includes(guess)) {
+		showAlert("Not in word list");
+		shakeTiles(activeTiles);
+		return;
+	}
+
+	stopInteraction();
+	activeTiles.forEach((...params) => flipTile(...params, guess));
+}
+
+function flipTile(tile, index, array, guess) {
+	const letter = tile.dataset.letter;
+	const key = keyboard.querySelector(`[data-key="${letter}"i]`);
+	setTimeout(() => {
+		tile.classList.add("flip");
+	}, (index * FLIP_ANIMATION_DURATION) / 2);
+
+	tile.addEventListener(
+		"transitionend",
+		() => {
+			tile.classList.remove("flip");
+			if (targetWord[index] === letter) {
+				tile.dataset.state = "correct";
+				key.classList.add("correct");
+			} else if (targetWord.includes(letter)) {
+				tile.dataset.state = "wrong-location";
+				key.classList.add("wrong-location");
+			} else {
+				tile.dataset.state = "wrong";
+				key.classList.add("wrong");
+			}
+
+			if (index === array.length - 1) {
+				tile.addEventListener(
+					"transitionend",
+					() => {
+						startInteraction();
+						checkWinLose(guess, array);
+					},
+					{
+						once: true,
+					}
+				);
+			}
+		},
+		{
+			once: true,
+		}
+	);
 }
 
 function getActiveTiles() {
@@ -15406,5 +15463,36 @@ function shakeTiles(tiles) {
 			},
 			{ once: true }
 		);
+	});
+}
+
+function checkWinLose(guess, tiles) {
+	if (guess === targetWord) {
+		showAlert("You win", 5000);
+		danceTiles(tiles);
+		stopInteraction();
+		return;
+	}
+
+	const remainingTiles = guessGrid.querySelectorAll(":not([data-letter])");
+	if (remainingTiles.length === 0) {
+		showAlert(targetWord.toLocaleUpperCase(), null);
+		stopInteraction();
+		return;
+	}
+}
+
+function danceTiles(tiles) {
+	tiles.forEach((tile, index) => {
+		setTimeout(() => {
+			tile.classList.add("dance");
+			tile.addEventListener(
+				"animationend",
+				() => {
+					tile.classList.remove("dance");
+				},
+				{ once: true }
+			);
+		}, (index * DANCE_ANIMATION_DURATION) / 5);
 	});
 }
